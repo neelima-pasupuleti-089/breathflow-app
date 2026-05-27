@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BreatheFlow Health Monitor
 
-## Getting Started
+BreatheFlow is a Vercel-ready Next.js app for the project:
 
-First, run the development server:
+**Compact Multi-Parameter Health Monitoring System using Micro Venturi Intake and Sensor Fusion for Real-Time Stress Detection**
+
+The app demonstrates:
+
+- Micro Venturi based breathing measurements
+- MAX30102 heart rate and SpO2 readings
+- MPU6050 posture and motion readings
+- Sensor-fusion classification for environmental stress, cardiovascular warning, and physical fatigue
+- Live demo scenarios and manual sensor sliders
+
+## Run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build check
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+```
 
-## Learn More
+## Deploy with Vercel
 
-To learn more about Next.js, take a look at the following resources:
+Option 1: GitHub import
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Push this folder to a GitHub repository.
+2. Go to `https://vercel.com/new`.
+3. Import the repository.
+4. Keep the detected framework as Next.js.
+5. Click Deploy.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Option 2: Vercel CLI
 
-## Deploy on Vercel
+```bash
+npm i -g vercel
+vercel
+vercel --prod
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No environment variables are required for this prototype.

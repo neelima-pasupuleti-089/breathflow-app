@@ -1,142 +1,516 @@
 .page {
-  --background: #fafafa;
-  --foreground: #fff;
-
-  --text-primary: #000;
-  --text-secondary: #666;
-
-  --button-primary-hover: #383838;
-  --button-secondary-hover: #f2f2f2;
-  --button-secondary-border: #ebebeb;
-
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-geist-sans);
-  background-color: var(--background);
+  min-height: 100vh;
+  background: #edf2f4;
+  color: #12202b;
 }
 
-.main {
+.heroBand {
+  background:
+    linear-gradient(115deg, rgba(17, 24, 39, 0.94), rgba(18, 84, 100, 0.9)),
+    #14212b;
+  color: #f8fafc;
+}
+
+.heroContent {
+  width: min(1180px, calc(100% - 32px));
+  min-height: 420px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 470px);
+  align-items: center;
+  gap: 48px;
+  padding: 44px 0;
+}
+
+.heroCopy {
+  display: grid;
+  gap: 18px;
+}
+
+.kicker,
+.eyebrow {
+  color: #1f9d8a;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.heroCopy h1 {
+  max-width: 680px;
+  font-size: clamp(3.2rem, 9vw, 7.6rem);
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+.heroCopy p:not(.kicker) {
+  max-width: 680px;
+  color: #d7e2e6;
+  font-size: 1.08rem;
+  line-height: 1.75;
+}
+
+.heroActions {
   display: flex;
-  flex: 1;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.controlButton {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 0 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    transform 160ms ease;
+}
+
+.controlButton:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.46);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.activeControl {
+  border-color: #55d4c4;
+  background: rgba(31, 157, 138, 0.24);
+}
+
+.deviceDiagram {
   width: 100%;
-  max-width: 800px;
-  flex-direction: column;
+  aspect-ratio: 420 / 250;
+  filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.18));
+}
+
+.svgLabel {
+  fill: #12202b;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.dashboard,
+.controlsBand,
+.sensorGrid {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
+  gap: 18px;
+  padding: 24px 0 18px;
+}
+
+.statusPanel,
+.wavePanel,
+.scenarioPanel,
+.labPanel {
+  border: 1px solid #d6dde1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 55px rgba(17, 32, 43, 0.08);
+}
+
+.statusPanel,
+.wavePanel {
+  padding: 24px;
+}
+
+.panelHeader {
+  display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  background-color: var(--foreground);
-  padding: 120px 60px;
+  gap: 18px;
+  margin-bottom: 18px;
 }
 
-.intro {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  text-align: left;
-  gap: 24px;
+.panelHeader h2,
+.scenarioPanel h2,
+.labPanel h2 {
+  margin-top: 5px;
+  color: #12202b;
+  font-size: 1.55rem;
+  line-height: 1.15;
+  letter-spacing: 0;
 }
 
-.intro h1 {
-  max-width: 320px;
-  font-size: 40px;
-  font-weight: 600;
-  line-height: 48px;
-  letter-spacing: -2.4px;
-  text-wrap: balance;
-  color: var(--text-primary);
-}
-
-.intro p {
-  max-width: 440px;
-  font-size: 18px;
-  line-height: 32px;
-  text-wrap: balance;
-  color: var(--text-secondary);
-}
-
-.intro a {
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.ctas {
-  display: flex;
-  flex-direction: row;
-  width: 100%;
-  max-width: 440px;
-  gap: 16px;
-  font-size: 14px;
-}
-
-.ctas a {
-  display: flex;
-  justify-content: center;
+.statusPill {
+  min-height: 32px;
+  display: inline-flex;
   align-items: center;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 128px;
-  border: 1px solid transparent;
-  transition: 0.2s;
-  cursor: pointer;
-  width: fit-content;
-  font-weight: 500;
+  white-space: nowrap;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
 }
 
-a.primary {
-  background: var(--text-primary);
-  color: var(--background);
+.stable {
+  color: #0f766e;
+  background: #dff7f1;
+}
+
+.environment {
+  color: #0f5a84;
+  background: #dcecff;
+}
+
+.cardio {
+  color: #b42318;
+  background: #ffe3df;
+}
+
+.fatigue {
+  color: #8a5600;
+  background: #fff0c9;
+}
+
+.actionLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border-left: 4px solid #1f9d8a;
+  padding: 10px 12px;
+  background: #f4fbf9;
+  color: #263542;
+  font-weight: 700;
+}
+
+.scoreGrid {
+  display: grid;
+  gap: 13px;
+  margin-top: 20px;
+}
+
+.scoreRow {
+  display: grid;
+  grid-template-columns: 120px minmax(100px, 1fr) 48px;
+  align-items: center;
+  gap: 12px;
+  color: #4b5b67;
+  font-size: 0.93rem;
+}
+
+.scoreRow strong {
+  color: #12202b;
+  text-align: right;
+}
+
+.scoreTrack {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef1;
+}
+
+.scoreTrack span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.environmentBar {
+  background: #2f6fed;
+}
+
+.cardioBar {
+  background: #ff6b6b;
+}
+
+.fatigueBar {
+  background: #f7b955;
+}
+
+.wavePanel {
+  min-height: 245px;
+}
+
+.waveChart {
+  width: 100%;
+  height: 118px;
+  margin-top: 14px;
+  overflow: visible;
+  border-bottom: 1px solid #dbe3e8;
+}
+
+.waveChart path {
+  fill: none;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.breathLine {
+  stroke: #1f9d8a;
+}
+
+.heartLine {
+  stroke: #ff6b6b;
+}
+
+.oxygenLine {
+  stroke: #2f6fed;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 16px;
+  color: #596a75;
+  font-size: 0.9rem;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.breathDot {
+  background: #1f9d8a;
+}
+
+.heartDot {
+  background: #ff6b6b;
+}
+
+.oxygenDot {
+  background: #2f6fed;
+}
+
+.sensorGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sensorCard {
+  min-height: 154px;
+  display: grid;
+  align-content: space-between;
+  gap: 20px;
+  border: 1px solid #d6dde1;
+  border-radius: 8px;
+  padding: 18px;
+  background: #ffffff;
+  box-shadow: 0 14px 40px rgba(17, 32, 43, 0.06);
+}
+
+.sensorTopline {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #596a75;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.sensorIcon {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #e9f7f4;
+  color: #0f766e;
+}
+
+.sensorValueRow {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  color: #8da0ab;
+}
+
+.sensorValueRow p {
+  margin-bottom: 6px;
+  color: #4b5b67;
+  font-size: 0.95rem;
+  font-weight: 750;
+}
+
+.sensorValueRow strong {
+  color: #12202b;
+  font-size: 2rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.sensorValueRow strong span {
+  margin-left: 6px;
+  color: #596a75;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.meter {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef1;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #1f9d8a;
+}
+
+.controlsBand {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+  gap: 18px;
+  padding: 18px 0 44px;
+}
+
+.scenarioPanel,
+.labPanel {
+  padding: 22px;
+}
+
+.segmentedControl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.segmentedControl button {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
+  border: 1px solid #d4dde2;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #344452;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
 }
 
-a.secondary {
-  border-color: var(--button-secondary-border);
+.segmentedControl button:hover,
+.segmentedControl .selectedSegment {
+  border-color: #1f9d8a;
+  background: #e9f7f4;
+  color: #0f766e;
 }
 
-/* Enable hover only on non-touch devices */
-@media (hover: hover) and (pointer: fine) {
-  a.primary:hover {
-    background: var(--button-primary-hover);
-    border-color: transparent;
+.sliderGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 20px;
+}
+
+.sliderLabel {
+  display: grid;
+  gap: 10px;
+}
+
+.sliderLabel span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: #4b5b67;
+  font-size: 0.91rem;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+.sliderLabel strong {
+  color: #12202b;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.sliderLabel input {
+  width: 100%;
+  accent-color: #1f9d8a;
+}
+
+@media (max-width: 940px) {
+  .heroContent,
+  .dashboard,
+  .controlsBand {
+    grid-template-columns: 1fr;
   }
 
-  a.secondary:hover {
-    background: var(--button-secondary-hover);
-    border-color: transparent;
+  .heroContent {
+    gap: 24px;
+  }
+
+  .deviceDiagram {
+    max-width: 520px;
+  }
+
+  .sensorGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 600px) {
-  .main {
-    padding: 48px 24px;
+@media (max-width: 640px) {
+  .heroContent {
+    min-height: auto;
+    padding: 34px 0 28px;
   }
 
-  .intro {
-    gap: 16px;
+  .heroCopy h1 {
+    font-size: clamp(3rem, 18vw, 4.5rem);
   }
 
-  .intro h1 {
-    font-size: 32px;
-    line-height: 40px;
-    letter-spacing: -1.92px;
-  }
-}
-
-@media (prefers-color-scheme: dark) {
-  .logo {
-    filter: invert();
+  .heroActions,
+  .panelHeader,
+  .scoreRow,
+  .sliderLabel span {
+    align-items: stretch;
   }
 
-  .page {
-    --background: #000;
-    --foreground: #000;
+  .panelHeader {
+    flex-direction: column;
+  }
 
-    --text-primary: #ededed;
-    --text-secondary: #999;
+  .scoreRow {
+    grid-template-columns: 1fr;
+  }
 
-    --button-primary-hover: #ccc;
-    --button-secondary-hover: #1a1a1a;
-    --button-secondary-border: #1a1a1a;
+  .scoreRow strong {
+    text-align: left;
+  }
+
+  .sensorGrid,
+  .sliderGrid,
+  .segmentedControl {
+    grid-template-columns: 1fr;
+  }
+
+  .sensorValueRow strong {
+    font-size: 1.72rem;
   }
 }
