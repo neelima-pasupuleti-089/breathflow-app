@@ -1,16 +1,25 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import {
   Activity,
+  AlertTriangle,
   BellRing,
+  CheckCircle2,
   Gauge,
   HeartPulse,
+  LogIn,
+  LogOut,
+  Mail,
   Pause,
+  Phone,
   Play,
   RotateCcw,
+  Send,
   ShieldCheck,
   ThermometerSun,
+  UserRound,
   UserRoundCog,
   Waves,
   Wind,
@@ -45,6 +54,25 @@ type FusionResult = {
   confidence: number;
   action: string;
   scores: Record<Exclude<CauseId, "stable">, number>;
+};
+
+type UserProfile = {
+  name: string;
+  email: string;
+  phone: string;
+  emailAlerts: boolean;
+  smsAlerts: boolean;
+};
+
+type LoginForm = UserProfile & {
+  accessCode: string;
+};
+
+type AlertState = {
+  status: "idle" | "ready" | "sending" | "sent" | "demo" | "error";
+  message: string;
+  channels: string[];
+  timestamp?: string;
 };
 
 const scenarios: ScenarioConfig[] = [
@@ -134,6 +162,15 @@ const sensorCards: Array<{
   { key: "postureAngle", label: "Posture tilt", group: "MPU6050 IMU", icon: UserRoundCog },
   { key: "motionLoad", label: "Motion load", group: "IMU fusion", icon: Activity },
 ];
+
+const emptyLoginForm: LoginForm = {
+  name: "",
+  email: "",
+  phone: "",
+  emailAlerts: true,
+  smsAlerts: false,
+  accessCode: "",
+};
 
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
@@ -375,10 +412,167 @@ function DeviceDiagram() {
   );
 }
 
+function LoginScreen({
+  form,
+  onChange,
+  onSubmit,
+}: {
+  form: LoginForm;
+  onChange: (form: LoginForm) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <main className={`${styles.page} ${styles.loginPage}`}>
+      <section className={styles.loginShell}>
+        <div className={styles.loginIntro}>
+          <p className={styles.kicker}>Personal health access</p>
+          <h1>BreatheFlow</h1>
+          <p>
+            Sign in with your profile to view private readings and receive alerts
+            when the fused sensor data detects stress risk.
+          </p>
+          <DeviceDiagram />
+        </div>
+
+        <form className={styles.loginCard} onSubmit={onSubmit}>
+          <div>
+            <p className={styles.eyebrow}>Login required</p>
+            <h2>Patient profile</h2>
+          </div>
+
+          <label className={styles.fieldLabel}>
+            Full name
+            <input
+              required
+              type="text"
+              value={form.name}
+              onChange={(event) => onChange({ ...form, name: event.target.value })}
+              placeholder="Enter your name"
+            />
+          </label>
+
+          <label className={styles.fieldLabel}>
+            Email address
+            <input
+              required
+              type="email"
+              value={form.email}
+              onChange={(event) => onChange({ ...form, email: event.target.value })}
+              placeholder="name@example.com"
+            />
+          </label>
+
+          <label className={styles.fieldLabel}>
+            Phone number
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(event) => onChange({ ...form, phone: event.target.value })}
+              placeholder="+91 9876543210"
+            />
+          </label>
+
+          <label className={styles.fieldLabel}>
+            Access code
+            <input
+              required
+              minLength={4}
+              type="password"
+              value={form.accessCode}
+              onChange={(event) =>
+                onChange({ ...form, accessCode: event.target.value })
+              }
+              placeholder="Any 4+ digit demo code"
+            />
+          </label>
+
+          <div className={styles.toggleGrid} aria-label="Alert channels">
+            <label>
+              <input
+                type="checkbox"
+                checked={form.emailAlerts}
+                onChange={(event) =>
+                  onChange({ ...form, emailAlerts: event.target.checked })
+                }
+              />
+              <Mail size={16} aria-hidden="true" />
+              Email alerts
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={form.smsAlerts}
+                onChange={(event) =>
+                  onChange({ ...form, smsAlerts: event.target.checked })
+                }
+              />
+              <Phone size={16} aria-hidden="true" />
+              SMS alerts
+            </label>
+          </div>
+
+          <button className={styles.loginButton} type="submit">
+            <LogIn size={18} aria-hidden="true" />
+            View my readings
+          </button>
+
+          <p className={styles.loginNote}>
+            This prototype stores the login profile on this browser. Real multi-user
+            passwords can be added later with Supabase or Firebase.
+          </p>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+function AlertPanel({
+  alertState,
+  onSendTest,
+}: {
+  alertState: AlertState;
+  onSendTest: () => void;
+}) {
+  const Icon =
+    alertState.status === "sent" || alertState.status === "demo"
+      ? CheckCircle2
+      : alertState.status === "error"
+        ? AlertTriangle
+        : BellRing;
+
+  return (
+    <div className={`${styles.alertPanel} ${styles[alertState.status]}`}>
+      <div className={styles.alertIcon}>
+        <Icon size={18} aria-hidden="true" />
+      </div>
+      <div>
+        <strong>{alertState.message}</strong>
+        {alertState.channels.length > 0 ? (
+          <span>Channels: {alertState.channels.join(", ")}</span>
+        ) : null}
+        {alertState.timestamp ? <span>{alertState.timestamp}</span> : null}
+      </div>
+      <button type="button" onClick={onSendTest} title="Send a test health alert">
+        <Send size={16} aria-hidden="true" />
+        <span>Test alert</span>
+      </button>
+    </div>
+  );
+}
+
 export default function Home() {
   const [scenario, setScenario] = useState<ScenarioId>("balanced");
   const [live, setLive] = useState(true);
   const stepRef = useRef(0);
+  const alertKeyRef = useRef("");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loginForm, setLoginForm] = useState<LoginForm>(emptyLoginForm);
+  const [alertState, setAlertState] = useState<AlertState>({
+    status: "idle",
+    message: "Alerts are waiting for a health risk signal.",
+    channels: [],
+  });
   const [snapshot, setSnapshot] = useState<SensorSnapshot>(() =>
     makeSnapshot("balanced", 0),
   );
@@ -389,6 +583,32 @@ export default function Home() {
   const result = useMemo(() => classifyStress(snapshot), [snapshot]);
   const selectedScenario =
     scenarios.find((item) => item.id === scenario) ?? scenarios[0];
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const savedProfile = window.localStorage.getItem("breatheflow-profile");
+      if (savedProfile) {
+        try {
+          const parsedProfile = JSON.parse(savedProfile) as UserProfile;
+          setProfile(parsedProfile);
+          setLoginForm({ ...parsedProfile, accessCode: "" });
+          setAlertState({
+            status: "ready",
+            message: `Alert monitoring is active for ${parsedProfile.name}.`,
+            channels: [
+              parsedProfile.emailAlerts ? "email" : "",
+              parsedProfile.smsAlerts ? "sms" : "",
+            ].filter(Boolean),
+          });
+        } catch {
+          window.localStorage.removeItem("breatheflow-profile");
+        }
+      }
+      setProfileLoaded(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (!live) return;
@@ -402,6 +622,63 @@ export default function Home() {
 
     return () => window.clearInterval(interval);
   }, [live, scenario]);
+
+  const sendHealthAlert = useCallback(async (manual = false) => {
+    if (!profile) return;
+
+    setAlertState({
+      status: "sending",
+      message: manual ? "Sending test alert..." : "Sending health risk alert...",
+      channels: [
+        profile.emailAlerts ? "email" : "",
+        profile.smsAlerts ? "sms" : "",
+      ].filter(Boolean),
+    });
+
+    try {
+      const response = await fetch("/api/alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          profile,
+          result,
+          snapshot,
+          manual,
+          generatedAt: new Date().toISOString(),
+        }),
+      });
+      const payload = (await response.json()) as {
+        ok: boolean;
+        mode: "sent" | "demo" | "error";
+        message: string;
+        channels?: string[];
+      };
+
+      setAlertState({
+        status: payload.ok ? payload.mode : "error",
+        message: payload.message,
+        channels: payload.channels ?? [],
+        timestamp: new Date().toLocaleString(),
+      });
+    } catch {
+      setAlertState({
+        status: "error",
+        message: "Alert service could not be reached.",
+        channels: [],
+        timestamp: new Date().toLocaleString(),
+      });
+    }
+  }, [profile, result, snapshot]);
+
+  useEffect(() => {
+    if (!profile || result.cause === "stable" || result.confidence < 70) return;
+
+    const alertKey = `${result.cause}-${Math.floor(Date.now() / 60000)}`;
+    if (alertKeyRef.current === alertKey) return;
+    alertKeyRef.current = alertKey;
+
+    void sendHealthAlert(false);
+  }, [profile, result.cause, result.confidence, sendHealthAlert, snapshot]);
 
   const selectScenario = (nextScenario: ScenarioId) => {
     stepRef.current = 0;
@@ -428,6 +705,66 @@ export default function Home() {
     setSnapshot(first);
     setHistory(Array.from({ length: 24 }, (_, index) => makeSnapshot(scenario, index)));
   };
+
+  const submitLogin = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextProfile: UserProfile = {
+      name: loginForm.name.trim(),
+      email: loginForm.email.trim(),
+      phone: loginForm.phone.trim(),
+      emailAlerts: loginForm.emailAlerts,
+      smsAlerts: loginForm.smsAlerts,
+    };
+
+    if (nextProfile.smsAlerts && !nextProfile.phone) {
+      setAlertState({
+        status: "error",
+        message: "Add a phone number to enable SMS alerts.",
+        channels: [],
+      });
+      return;
+    }
+
+    window.localStorage.setItem("breatheflow-profile", JSON.stringify(nextProfile));
+    setProfile(nextProfile);
+    setAlertState({
+      status: "ready",
+      message: `Alert monitoring is active for ${nextProfile.name}.`,
+      channels: [
+        nextProfile.emailAlerts ? "email" : "",
+        nextProfile.smsAlerts ? "sms" : "",
+      ].filter(Boolean),
+    });
+  };
+
+  const signOut = () => {
+    window.localStorage.removeItem("breatheflow-profile");
+    setProfile(null);
+    setLoginForm(emptyLoginForm);
+    setAlertState({
+      status: "idle",
+      message: "Alerts are waiting for a health risk signal.",
+      channels: [],
+    });
+  };
+
+  if (!profileLoaded) {
+    return (
+      <main className={`${styles.page} ${styles.loginPage}`}>
+        <section className={styles.loadingPanel}>Loading BreatheFlow...</section>
+      </main>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <LoginScreen
+        form={loginForm}
+        onChange={setLoginForm}
+        onSubmit={submitLogin}
+      />
+    );
+  }
 
   return (
     <main className={styles.page}>
@@ -464,6 +801,24 @@ export default function Home() {
           </div>
           <DeviceDiagram />
         </div>
+      </section>
+
+      <section className={styles.profileBand}>
+        <div className={styles.profileCard}>
+          <span className={styles.profileIcon}>
+            <UserRound size={18} aria-hidden="true" />
+          </span>
+          <div>
+            <p>Logged in as</p>
+            <strong>{profile.name}</strong>
+            <span>{profile.email}</span>
+          </div>
+          <button type="button" onClick={signOut} title="Sign out">
+            <LogOut size={16} aria-hidden="true" />
+            <span>Sign out</span>
+          </button>
+        </div>
+        <AlertPanel alertState={alertState} onSendTest={() => void sendHealthAlert(true)} />
       </section>
 
       <section className={styles.dashboard}>

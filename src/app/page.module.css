@@ -4,6 +4,144 @@
   color: #12202b;
 }
 
+.loginPage {
+  display: grid;
+  place-items: center;
+  padding: 28px 16px;
+  background:
+    linear-gradient(115deg, rgba(17, 24, 39, 0.96), rgba(18, 84, 100, 0.88)),
+    #14212b;
+}
+
+.loginShell {
+  width: min(1050px, 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 430px);
+  gap: 28px;
+  align-items: center;
+}
+
+.loginIntro {
+  display: grid;
+  gap: 18px;
+  color: #f8fafc;
+}
+
+.loginIntro h1 {
+  font-size: clamp(3.2rem, 9vw, 6.7rem);
+  line-height: 0.92;
+  letter-spacing: 0;
+}
+
+.loginIntro p:not(.kicker) {
+  max-width: 620px;
+  color: #d7e2e6;
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.loginIntro .deviceDiagram {
+  max-width: 520px;
+}
+
+.loginCard,
+.loadingPanel {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.22);
+}
+
+.loginCard {
+  display: grid;
+  gap: 16px;
+  padding: 24px;
+}
+
+.loginCard h2 {
+  margin-top: 5px;
+  color: #12202b;
+  font-size: 1.55rem;
+  letter-spacing: 0;
+}
+
+.fieldLabel {
+  display: grid;
+  gap: 8px;
+  color: #344452;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.fieldLabel input {
+  min-height: 44px;
+  border: 1px solid #cad5dc;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #f8fafc;
+  color: #12202b;
+  font: inherit;
+}
+
+.fieldLabel input:focus {
+  outline: 3px solid rgba(31, 157, 138, 0.22);
+  border-color: #1f9d8a;
+}
+
+.toggleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.toggleGrid label {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #d4dde2;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #344452;
+  font-weight: 800;
+}
+
+.toggleGrid input {
+  accent-color: #1f9d8a;
+}
+
+.loginButton {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 0;
+  border-radius: 8px;
+  background: #12202b;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.loginButton:hover {
+  background: #1f9d8a;
+}
+
+.loginNote {
+  color: #596a75;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.loadingPanel {
+  padding: 24px;
+  color: #12202b;
+  font-weight: 800;
+}
+
 .heroBand {
   background:
     linear-gradient(115deg, rgba(17, 24, 39, 0.94), rgba(18, 84, 100, 0.9)),
@@ -102,9 +240,140 @@
 
 .dashboard,
 .controlsBand,
-.sensorGrid {
+.sensorGrid,
+.profileBand {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
+}
+
+.profileBand {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.75fr) minmax(0, 1.25fr);
+  gap: 18px;
+  padding: 18px 0 0;
+}
+
+.profileCard,
+.alertPanel {
+  min-height: 86px;
+  border: 1px solid #d6dde1;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 14px 40px rgba(17, 32, 43, 0.06);
+}
+
+.profileCard {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.profileIcon,
+.alertIcon {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #e9f7f4;
+  color: #0f766e;
+}
+
+.profileCard p {
+  margin-bottom: 3px;
+  color: #596a75;
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.profileCard strong,
+.profileCard span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.profileCard strong {
+  color: #12202b;
+}
+
+.profileCard span {
+  color: #596a75;
+  font-size: 0.9rem;
+}
+
+.profileCard button,
+.alertPanel button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #d4dde2;
+  border-radius: 8px;
+  padding: 0 12px;
+  background: #f8fafc;
+  color: #344452;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.profileCard button:hover,
+.alertPanel button:hover {
+  border-color: #1f9d8a;
+  color: #0f766e;
+}
+
+.alertPanel {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.alertPanel strong,
+.alertPanel span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.alertPanel strong {
+  color: #12202b;
+}
+
+.alertPanel span {
+  margin-top: 3px;
+  color: #596a75;
+  font-size: 0.86rem;
+}
+
+.idle .alertIcon,
+.ready .alertIcon {
+  background: #dff7f1;
+  color: #0f766e;
+}
+
+.sending .alertIcon {
+  background: #dcecff;
+  color: #2f6fed;
+}
+
+.sent .alertIcon,
+.demo .alertIcon {
+  background: #dff7f1;
+  color: #0f766e;
+}
+
+.error .alertIcon {
+  background: #ffe3df;
+  color: #b42318;
 }
 
 .dashboard {
@@ -456,9 +725,11 @@
 }
 
 @media (max-width: 940px) {
+  .loginShell,
   .heroContent,
   .dashboard,
-  .controlsBand {
+  .controlsBand,
+  .profileBand {
     grid-template-columns: 1fr;
   }
 
@@ -476,6 +747,21 @@
 }
 
 @media (max-width: 640px) {
+  .loginCard {
+    padding: 20px;
+  }
+
+  .toggleGrid,
+  .profileCard,
+  .alertPanel {
+    grid-template-columns: 1fr;
+  }
+
+  .profileCard,
+  .alertPanel {
+    align-items: stretch;
+  }
+
   .heroContent {
     min-height: auto;
     padding: 34px 0 28px;
