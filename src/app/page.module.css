@@ -1,7 +1,7 @@
 .page {
   min-height: 100vh;
   background:
-    linear-gradient(180deg, #f7fbfc 0%, #eef5f7 44%, #e7eef2 100%);
+    linear-gradient(180deg, #eef8f7 0%, #edf4f8 42%, #dde8ef 100%);
   color: #12202b;
 }
 
@@ -121,7 +121,9 @@
 .dangerButton,
 .secondaryButton,
 .iconButton,
-.iconLink {
+.iconLink,
+.deleteButton,
+.rowDeleteButton {
   min-height: 42px;
   display: inline-flex;
   align-items: center;
@@ -168,6 +170,33 @@
   background: #ffffff;
   color: #263542;
   text-decoration: none;
+}
+
+.deleteButton,
+.rowDeleteButton {
+  border: 1px solid #ffd0ca;
+  background: #fff7f5;
+  color: #b42318;
+}
+
+.deleteButton:hover,
+.rowDeleteButton:hover {
+  transform: translateY(-1px);
+  border-color: #ef5d5d;
+  background: #ffe3df;
+}
+
+.deleteButton:disabled,
+.rowDeleteButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+  transform: none;
+}
+
+.rowDeleteButton {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 0.82rem;
 }
 
 .secondaryButton:hover,
@@ -333,6 +362,9 @@
   min-width: 0;
   display: grid;
   grid-template-rows: auto 1fr;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(236, 246, 248, 0.88)),
+    #eef5f7;
 }
 
 .topBar {
@@ -343,7 +375,8 @@
   gap: 18px;
   border-bottom: 1px solid #d9e3e8;
   padding: 18px 28px;
-  background: rgba(255, 255, 255, 0.82);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.92), rgba(240, 249, 250, 0.88));
   backdrop-filter: blur(14px);
 }
 
@@ -379,8 +412,8 @@
 .sectionHeader h2 {
   max-width: 860px;
   margin-top: 7px;
-  font-size: clamp(1.8rem, 3vw, 3rem);
-  line-height: 1.05;
+  font-size: clamp(1.7rem, 2.5vw, 2.55rem);
+  line-height: 1.08;
 }
 
 .sectionHeader p:not(.eyebrow) {
@@ -439,6 +472,32 @@
 .profileForm,
 .settingCard {
   padding: 22px;
+}
+
+.statusPanel,
+.wavePanel,
+.aiPreview,
+.emergencyPreview,
+.alertPanel,
+.sensorCard,
+.scenarioPanel,
+.labPanel,
+.aiMainCard,
+.stepsCard,
+.emergencyCard,
+.locationCard,
+.hospitalFocus,
+.reportCard,
+.hospitalCard,
+.timelineItem,
+.profileForm,
+.settingCard,
+.vitalsStrip,
+.profileHeroCard,
+.profileRouteCard,
+.settingsSummary article {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f9fcfd 100%);
 }
 
 .panelHeader {
@@ -1129,6 +1188,40 @@
   gap: 16px;
 }
 
+.settingsSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settingsSummary article {
+  border: 1px solid #d7e1e6;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 18px 45px rgba(17, 32, 43, 0.07);
+}
+
+.settingsSummary span {
+  color: #17a78b;
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.settingsSummary strong {
+  display: block;
+  margin-top: 8px;
+  color: #12202b;
+  font-size: 1.34rem;
+  line-height: 1.15;
+}
+
+.settingsSummary p {
+  margin-top: 10px;
+  color: #596b76;
+  line-height: 1.55;
+}
+
 .hospitalCard {
   display: grid;
   align-content: start;
@@ -1146,7 +1239,7 @@
 
 .timelineItem {
   display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
+  grid-template-columns: 16px minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 14px;
   padding: 16px;
@@ -1178,15 +1271,174 @@
 }
 
 .profileForm {
-  width: min(760px, 100%);
   display: grid;
   gap: 16px;
+}
+
+.profileDashboard {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.9fr) minmax(360px, 1.1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.profileHeroCard,
+.profileRouteCard {
+  border: 1px solid #d7e1e6;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 18px 45px rgba(17, 32, 43, 0.07);
+}
+
+.profileHeroCard {
+  display: grid;
+  gap: 18px;
+  background:
+    linear-gradient(135deg, #0b1724 0%, #123846 64%, #0d7368 100%);
+  color: #eaf3f6;
+}
+
+.profileAvatarLarge {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #e3f8f3;
+  color: #0c7565;
+  font-size: 1.55rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.profileHeroText h3 {
+  margin-top: 6px;
+  color: #ffffff;
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+.profileHeroText span {
+  display: block;
+  margin-top: 7px;
+  color: #bdd5dd;
+  overflow-wrap: anywhere;
+}
+
+.profileBadges,
+.profileStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.profileBadges span {
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.profileStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.profileStats div {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.profileStats small {
+  display: block;
+  color: #9fc4ca;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profileStats strong {
+  display: block;
+  margin-top: 7px;
+  color: #ffffff;
+  line-height: 1.2;
+  text-transform: capitalize;
+}
+
+.profileForm,
+.profileRouteCard {
+  padding: 22px;
+}
+
+.formHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.formHeader svg {
+  flex: 0 0 auto;
+  color: #17a78b;
+}
+
+.formHeader h3 {
+  color: #12202b;
+  font-size: 1.26rem;
+}
+
+.formHeader p {
+  margin-top: 6px;
+  color: #596b76;
+  line-height: 1.5;
+}
+
+.profileRouteCard {
+  grid-column: 2;
+}
+
+.routeList {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.routeList div {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #d7e1e6;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f7fafb;
+}
+
+.routeList svg {
+  color: #17a78b;
+}
+
+.routeList span {
+  color: #596b76;
+  font-weight: 800;
+}
+
+.routeList strong {
+  min-width: 0;
+  color: #12202b;
+  overflow-wrap: anywhere;
 }
 
 .settingCard {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
   gap: 12px;
+  min-height: 190px;
 }
 
 .settingCard svg {
@@ -1197,6 +1449,20 @@
   margin-top: 8px;
   color: #596b76;
   line-height: 1.55;
+}
+
+.settingStatus {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  margin-top: 16px;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #e3f8f3;
+  color: #0c7565;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-transform: capitalize;
 }
 
 @media (max-width: 1060px) {
@@ -1228,8 +1494,17 @@
 
   .hospitalGrid,
   .settingsGrid,
+  .settingsSummary,
   .sensorGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profileDashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .profileRouteCard {
+    grid-column: auto;
   }
 }
 
@@ -1258,6 +1533,7 @@
   .sideNav,
   .hospitalGrid,
   .settingsGrid,
+  .settingsSummary,
   .sensorGrid,
   .sliderGrid,
   .segmentedControl,
@@ -1270,7 +1546,9 @@
   .aiPreview,
   .emergencyPreview,
   .timelineItem,
-  .settingCard {
+  .settingCard,
+  .routeList div,
+  .profileStats {
     grid-template-columns: 1fr;
   }
 

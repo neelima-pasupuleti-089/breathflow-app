@@ -33,6 +33,7 @@ import {
   Siren,
   SlidersHorizontal,
   ThermometerSun,
+  Trash2,
   UserRound,
   UserRoundCog,
   Waves,
@@ -890,17 +891,22 @@ export default function Home() {
     hospitalsWithDistance[0];
 
   const activityLog = useMemo(
-    () =>
-      historySnapshots.slice(-7).map((item, index) => {
+    () => {
+      const visibleItems = historySnapshots.slice(-7);
+      const offset = historySnapshots.length - visibleItems.length;
+
+      return visibleItems.map((item, index) => {
         const itemResult = classifyStress(item);
-        const minutesAgo = (6 - index) * 2;
+        const minutesAgo = (visibleItems.length - 1 - index) * 2;
         return {
-          id: `${itemResult.cause}-${index}-${item.heartRate}`,
+          id: `${itemResult.cause}-${offset + index}-${item.heartRate}`,
+          sourceIndex: offset + index,
           time: minutesAgo === 0 ? "Now" : `${minutesAgo} min ago`,
           result: itemResult,
           snapshot: item,
         };
-      }),
+      });
+    },
     [historySnapshots],
   );
 
@@ -1065,6 +1071,17 @@ export default function Home() {
     setHistorySnapshots(
       Array.from({ length: 24 }, (_, index) => makeSnapshot(scenario, index)),
     );
+  };
+
+  const deleteHistoryPoint = (sourceIndex: number) => {
+    setHistorySnapshots((items) => {
+      const nextItems = items.filter((_, index) => index !== sourceIndex);
+      return nextItems.length > 0 ? nextItems : [snapshot];
+    });
+  };
+
+  const clearHistory = () => {
+    setHistorySnapshots([snapshot]);
   };
 
   const submitLogin = (event: FormEvent<HTMLFormElement>) => {
@@ -1680,8 +1697,19 @@ export default function Home() {
     <>
       <SectionHeader
         eyebrow="Health timeline"
-        title="Recent fused states are kept visible for presentation."
-        description="This timeline helps explain how the prototype moves from raw readings to cause-based health events."
+        title="Recent fused states stay useful without making the app overloaded."
+        description="Keep the timeline for explanation, then delete individual entries or clear the session when it gets crowded."
+        action={
+          <button
+            className={styles.deleteButton}
+            type="button"
+            onClick={clearHistory}
+            disabled={historySnapshots.length <= 1}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            Clear history
+          </button>
+        }
       />
 
       <section className={styles.timeline}>
@@ -1697,6 +1725,15 @@ export default function Home() {
               </span>
             </div>
             <strong>{event.result.confidence}%</strong>
+            <button
+              className={styles.rowDeleteButton}
+              type="button"
+              onClick={() => deleteHistoryPoint(event.sourceIndex)}
+              title="Delete this history entry"
+            >
+              <Trash2 size={15} aria-hidden="true" />
+              <span>Delete</span>
+            </button>
           </article>
         ))}
       </section>
@@ -1707,65 +1744,128 @@ export default function Home() {
     <>
       <SectionHeader
         eyebrow="Patient profile"
-        title="Profile details open only from the sidebar."
-        description="Contact information controls email and SMS notification routing for the prototype."
+        title="Profile, contact routing, and alert preferences"
+        description="The profile now feels like a health workspace instead of a plain form."
       />
 
-      <form className={styles.profileForm} onSubmit={saveProfile}>
-        <label className={styles.fieldLabel}>
-          Full name
-          <input
-            required
-            type="text"
-            value={loginForm.name}
-            onChange={(event) => setLoginForm({ ...loginForm, name: event.target.value })}
-          />
-        </label>
-        <label className={styles.fieldLabel}>
-          Email address
-          <input
-            required
-            type="email"
-            value={loginForm.email}
-            onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
-          />
-        </label>
-        <label className={styles.fieldLabel}>
-          Phone number
-          <input
-            type="tel"
-            value={loginForm.phone}
-            onChange={(event) => setLoginForm({ ...loginForm, phone: event.target.value })}
-          />
-        </label>
-        <div className={styles.toggleGrid}>
-          <label>
+      <section className={styles.profileDashboard}>
+        <article className={styles.profileHeroCard}>
+          <div className={styles.profileAvatarLarge}>{getInitials(profile.name)}</div>
+          <div className={styles.profileHeroText}>
+            <p className={styles.eyebrow}>Active patient workspace</p>
+            <h3>{profile.name}</h3>
+            <span>{profile.email}</span>
+          </div>
+          <div className={styles.profileBadges}>
+            <span>Private dashboard</span>
+            <span>{profile.emailAlerts || profile.smsAlerts ? "Alerts active" : "Alerts off"}</span>
+          </div>
+          <div className={styles.profileStats}>
+            <div>
+              <small>Current status</small>
+              <strong>{result.title}</strong>
+            </div>
+            <div>
+              <small>Risk level</small>
+              <strong>{guidance.level}</strong>
+            </div>
+            <div>
+              <small>Hospital route</small>
+              <strong>{selectedHospital.response}</strong>
+            </div>
+          </div>
+        </article>
+
+        <form className={styles.profileForm} onSubmit={saveProfile}>
+          <div className={styles.formHeader}>
+            <UserRoundCog size={22} aria-hidden="true" />
+            <div>
+              <h3>Contact details</h3>
+              <p>Used for alert routing and emergency handoff reports.</p>
+            </div>
+          </div>
+          <label className={styles.fieldLabel}>
+            Full name
             <input
-              type="checkbox"
-              checked={loginForm.emailAlerts}
-              onChange={(event) =>
-                setLoginForm({ ...loginForm, emailAlerts: event.target.checked })
-              }
+              required
+              type="text"
+              value={loginForm.name}
+              onChange={(event) => setLoginForm({ ...loginForm, name: event.target.value })}
             />
-            <Mail size={16} aria-hidden="true" />
-            Email alerts
           </label>
-          <label>
+          <label className={styles.fieldLabel}>
+            Email address
             <input
-              type="checkbox"
-              checked={loginForm.smsAlerts}
-              onChange={(event) =>
-                setLoginForm({ ...loginForm, smsAlerts: event.target.checked })
-              }
+              required
+              type="email"
+              value={loginForm.email}
+              onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
             />
-            <Phone size={16} aria-hidden="true" />
-            SMS alerts
           </label>
-        </div>
-        <button className={styles.loginButton} type="submit">
-          Save profile
-        </button>
-      </form>
+          <label className={styles.fieldLabel}>
+            Phone number
+            <input
+              type="tel"
+              value={loginForm.phone}
+              onChange={(event) => setLoginForm({ ...loginForm, phone: event.target.value })}
+            />
+          </label>
+          <div className={styles.toggleGrid}>
+            <label>
+              <input
+                type="checkbox"
+                checked={loginForm.emailAlerts}
+                onChange={(event) =>
+                  setLoginForm({ ...loginForm, emailAlerts: event.target.checked })
+                }
+              />
+              <Mail size={16} aria-hidden="true" />
+              Email alerts
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={loginForm.smsAlerts}
+                onChange={(event) =>
+                  setLoginForm({ ...loginForm, smsAlerts: event.target.checked })
+                }
+              />
+              <Phone size={16} aria-hidden="true" />
+              SMS alerts
+            </label>
+          </div>
+          <button className={styles.loginButton} type="submit">
+            Save profile
+          </button>
+        </form>
+
+        <article className={styles.profileRouteCard}>
+          <div className={styles.formHeader}>
+            <ShieldCheck size={22} aria-hidden="true" />
+            <div>
+              <h3>Notification routing</h3>
+              <p>Shows how this profile will be contacted during a risk event.</p>
+            </div>
+          </div>
+          <div className={styles.routeList}>
+            <div>
+              <Mail size={18} aria-hidden="true" />
+              <span>Email channel</span>
+              <strong>{profile.emailAlerts ? "Enabled" : "Disabled"}</strong>
+            </div>
+            <div>
+              <Phone size={18} aria-hidden="true" />
+              <span>SMS channel</span>
+              <strong>{profile.smsAlerts ? "Enabled" : "Disabled"}</strong>
+            </div>
+            <div>
+              <Hospital size={18} aria-hidden="true" />
+              <span>Hospital handoff</span>
+              <strong>{selectedHospital.name}</strong>
+            </div>
+          </div>
+        </article>
+      </section>
     </>
   );
 
@@ -1773,9 +1873,38 @@ export default function Home() {
     <>
       <SectionHeader
         eyebrow="Prototype settings"
-        title="Submission-ready controls and safety notes"
-        description="The app keeps demo data separate from production alert integrations."
+        title="Controls, integrations, and safety boundaries"
+        description="Settings now show what is live, what is simulated, and what needs real API keys later."
+        action={
+          <button
+            className={styles.deleteButton}
+            type="button"
+            onClick={clearHistory}
+            disabled={historySnapshots.length <= 1}
+          >
+            <Trash2 size={16} aria-hidden="true" />
+            Clear timeline
+          </button>
+        }
       />
+
+      <section className={styles.settingsSummary}>
+        <article>
+          <span>Mode</span>
+          <strong>Prototype demo</strong>
+          <p>Live sensor values are simulated until the ESP32-S3 stream is connected.</p>
+        </article>
+        <article>
+          <span>Alerts</span>
+          <strong>{profile.emailAlerts || profile.smsAlerts ? "Enabled" : "Disabled"}</strong>
+          <p>Email/SMS routing follows the saved patient profile.</p>
+        </article>
+        <article>
+          <span>Hospital</span>
+          <strong>{selectedHospital.name}</strong>
+          <p>Emergency handoff can generate a report and open the call action.</p>
+        </article>
+      </section>
 
       <section className={styles.settingsGrid}>
         <article className={styles.settingCard}>
@@ -1783,6 +1912,7 @@ export default function Home() {
           <div>
             <h3>Simulation mode</h3>
             <p>Live readings are generated from scenario profiles until ESP32-S3 data is connected.</p>
+            <span className={styles.settingStatus}>Active for demo</span>
           </div>
         </article>
         <article className={styles.settingCard}>
@@ -1790,6 +1920,7 @@ export default function Home() {
           <div>
             <h3>Clinical boundary</h3>
             <p>BreatheFlow is a prototype dashboard, not a certified diagnosis system.</p>
+            <span className={styles.settingStatus}>Shown in app</span>
           </div>
         </article>
         <article className={styles.settingCard}>
@@ -1797,6 +1928,31 @@ export default function Home() {
           <div>
             <h3>Privacy boundary</h3>
             <p>Profile data stays in browser storage unless an alert or emergency report is sent.</p>
+            <span className={styles.settingStatus}>Local first</span>
+          </div>
+        </article>
+        <article className={styles.settingCard}>
+          <BellRing size={22} aria-hidden="true" />
+          <div>
+            <h3>Alert delivery</h3>
+            <p>Real delivery needs Resend and Twilio environment variables on Vercel.</p>
+            <span className={styles.settingStatus}>Demo-ready</span>
+          </div>
+        </article>
+        <article className={styles.settingCard}>
+          <MapPin size={22} aria-hidden="true" />
+          <div>
+            <h3>Location access</h3>
+            <p>Location is requested only when the user opens Emergency Assist.</p>
+            <span className={styles.settingStatus}>{locationState.status}</span>
+          </div>
+        </article>
+        <article className={styles.settingCard}>
+          <History size={22} aria-hidden="true" />
+          <div>
+            <h3>Timeline control</h3>
+            <p>History can now be cleared or individual entries can be deleted.</p>
+            <span className={styles.settingStatus}>{historySnapshots.length} entries</span>
           </div>
         </article>
       </section>
