@@ -5,19 +5,33 @@ import type { FormEvent } from "react";
 import {
   Activity,
   AlertTriangle,
+  Ambulance,
   BellRing,
+  Bot,
+  BrainCircuit,
   CheckCircle2,
+  ClipboardList,
+  FileText,
   Gauge,
   HeartPulse,
+  History,
+  Hospital,
+  LayoutDashboard,
   LogIn,
   LogOut,
   Mail,
+  MapPin,
+  Navigation,
   Pause,
   Phone,
+  PhoneCall,
   Play,
   RotateCcw,
   Send,
+  Settings,
   ShieldCheck,
+  Siren,
+  SlidersHorizontal,
   ThermometerSun,
   UserRound,
   UserRoundCog,
@@ -29,6 +43,16 @@ import styles from "./page.module.css";
 type ScenarioId = "balanced" | "environment" | "cardio" | "fatigue";
 type CauseId = "stable" | "environment" | "cardio" | "fatigue";
 type MetricKey = keyof SensorSnapshot;
+type AppSection =
+  | "dashboard"
+  | "readings"
+  | "ai"
+  | "emergency"
+  | "hospitals"
+  | "history"
+  | "profile"
+  | "settings";
+type RiskLevel = "stable" | "caution" | "warning" | "severe";
 
 type SensorSnapshot = {
   breathRate: number;
@@ -73,6 +97,52 @@ type AlertState = {
   message: string;
   channels: string[];
   timestamp?: string;
+};
+
+type UserLocation = {
+  lat: number;
+  lng: number;
+  accuracy?: number;
+};
+
+type LocationState = {
+  status: "idle" | "locating" | "ready" | "denied" | "error";
+  message: string;
+  coords?: UserLocation;
+};
+
+type EmergencyState = {
+  status: "idle" | "sending" | "sent" | "demo" | "calling" | "error";
+  message: string;
+  reportId?: string;
+  timestamp?: string;
+  selectedHospitalId: string;
+};
+
+type HospitalPartner = {
+  id: string;
+  name: string;
+  type: string;
+  phone: string;
+  reportEmail: string;
+  address: string;
+  lat: number;
+  lng: number;
+  response: string;
+  specialties: string[];
+};
+
+type HospitalWithDistance = HospitalPartner & {
+  distanceKm?: number;
+};
+
+type AiGuidance = {
+  level: RiskLevel;
+  title: string;
+  summary: string;
+  possibleCause: string;
+  immediateSteps: string[];
+  hospitalTrigger: string;
 };
 
 const scenarios: ScenarioConfig[] = [
@@ -161,6 +231,61 @@ const sensorCards: Array<{
   { key: "spo2", label: "SpO2", group: "Pulse oximeter", icon: ShieldCheck },
   { key: "postureAngle", label: "Posture tilt", group: "MPU6050 IMU", icon: UserRoundCog },
   { key: "motionLoad", label: "Motion load", group: "IMU fusion", icon: Activity },
+];
+
+const navItems: Array<{ id: AppSection; label: string; icon: typeof LayoutDashboard }> = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "readings", label: "Readings", icon: Gauge },
+  { id: "ai", label: "AI Suggestions", icon: BrainCircuit },
+  { id: "emergency", label: "Emergency", icon: Siren },
+  { id: "hospitals", label: "Hospitals", icon: Hospital },
+  { id: "history", label: "History", icon: History },
+  { id: "profile", label: "Profile", icon: UserRound },
+  { id: "settings", label: "Settings", icon: Settings },
+];
+
+const configuredHospitalPhone =
+  process.env.NEXT_PUBLIC_AFFILIATED_HOSPITAL_PHONE ?? "+910000000000";
+const configuredHospitalEmail =
+  process.env.NEXT_PUBLIC_AFFILIATED_HOSPITAL_EMAIL ?? "triage@breatheflow.demo";
+
+const hospitalPartners: HospitalPartner[] = [
+  {
+    id: "triage-desk",
+    name: "BreatheFlow Affiliated Triage Desk",
+    type: "24x7 emergency coordination",
+    phone: configuredHospitalPhone,
+    reportEmail: configuredHospitalEmail,
+    address: "Hyderabad emergency partner network",
+    lat: 17.4483,
+    lng: 78.3915,
+    response: "6-9 min",
+    specialties: ["Emergency triage", "Respiratory review", "Vitals handoff"],
+  },
+  {
+    id: "cardio-wing",
+    name: "PulseBridge Cardio Emergency Wing",
+    type: "Cardio and oxygen support",
+    phone: "+910000000001",
+    reportEmail: "cardio@breatheflow.demo",
+    address: "Central clinical response zone",
+    lat: 17.4239,
+    lng: 78.4738,
+    response: "8-12 min",
+    specialties: ["Heart-rate escalation", "SpO2 review", "Rapid admission"],
+  },
+  {
+    id: "rapid-care",
+    name: "MetroCare Rapid Response Unit",
+    type: "General emergency care",
+    phone: "+910000000002",
+    reportEmail: "rapidcare@breatheflow.demo",
+    address: "Northwest urgent-care corridor",
+    lat: 17.385,
+    lng: 78.4867,
+    response: "10-14 min",
+    specialties: ["Fatigue events", "Fall/posture strain", "On-call doctor"],
+  },
 ];
 
 const emptyLoginForm: LoginForm = {
@@ -287,8 +412,8 @@ function metricPercent(key: MetricKey, value: number) {
 function chartPath(
   history: SensorSnapshot[],
   key: MetricKey,
-  height = 48,
-  width = 220,
+  height = 58,
+  width = 300,
 ) {
   if (history.length === 0) return "";
   return history
@@ -298,6 +423,137 @@ function chartPath(
       return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
     })
     .join(" ");
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return (parts[0]?.[0] ?? "B") + (parts[1]?.[0] ?? "F");
+}
+
+function getRiskLevel(result: FusionResult, snapshot: SensorSnapshot): RiskLevel {
+  if (
+    result.cause === "cardio" &&
+    (result.confidence >= 86 || snapshot.spo2 <= 92 || snapshot.heartRate >= 120)
+  ) {
+    return "severe";
+  }
+  if (result.confidence >= 88 || snapshot.stressIndex >= 82) return "severe";
+  if (result.cause !== "stable" && result.confidence >= 76) return "warning";
+  if (result.cause !== "stable") return "caution";
+  return "stable";
+}
+
+function getAiGuidance(result: FusionResult, snapshot: SensorSnapshot): AiGuidance {
+  const level = getRiskLevel(result, snapshot);
+
+  if (result.cause === "environment") {
+    return {
+      level,
+      title: level === "severe" ? "Breathing strain needs urgent review" : "Breathing load detected",
+      summary:
+        "The respiratory signal is contributing more strongly than heart or posture readings.",
+      possibleCause:
+        "Possible cause: heat, dust exposure, poor airflow, or increased breathing load.",
+      immediateSteps: [
+        "Move to a cleaner and cooler place.",
+        "Sit upright and reduce physical activity for a few minutes.",
+        "Recheck breath rate and peak flow after resting.",
+      ],
+      hospitalTrigger:
+        "Escalate if breath rate stays high, breathing feels difficult, or SpO2 drops.",
+    };
+  }
+
+  if (result.cause === "cardio") {
+    return {
+      level,
+      title: level === "severe" ? "Cardio warning is high priority" : "Heart and oxygen pattern needs attention",
+      summary:
+        "Heart rate and oxygen readings are currently the strongest risk signals.",
+      possibleCause:
+        "Possible cause: cardiovascular stress, low oxygen trend, panic response, or overexertion.",
+      immediateSteps: [
+        "Stop activity and sit in a stable position.",
+        "Ask a nearby person to stay with the user.",
+        "Use Emergency Assist if symptoms continue or readings worsen.",
+      ],
+      hospitalTrigger:
+        "Escalate immediately for chest pain, faintness, SpO2 near 92%, or very high heart rate.",
+    };
+  }
+
+  if (result.cause === "fatigue") {
+    return {
+      level,
+      title: "Physical fatigue and posture strain detected",
+      summary:
+        "Posture angle and motion load suggest body strain rather than a purely breathing or cardio event.",
+      possibleCause:
+        "Possible cause: prolonged activity, poor posture, muscle fatigue, or instability.",
+      immediateSteps: [
+        "Pause movement and correct posture.",
+        "Hydrate and rest before resuming activity.",
+        "Watch for dizziness, imbalance, or repeated posture warnings.",
+      ],
+      hospitalTrigger:
+        "Escalate if posture instability is combined with high heart rate or breathing strain.",
+    };
+  }
+
+  return {
+    level: "stable",
+    title: "Readings are stable",
+    summary:
+      "The fused sensor pattern is within the safe demonstration range right now.",
+    possibleCause:
+      "No abnormal stress cause is currently dominant in the sensor fusion result.",
+    immediateSteps: [
+      "Keep the wearable fitted correctly.",
+      "Review history if symptoms do not match the dashboard.",
+      "Continue routine monitoring during the demo.",
+    ],
+    hospitalTrigger:
+      "Emergency Assist remains available if the user feels unwell despite stable readings.",
+  };
+}
+
+function distanceKm(from: UserLocation, hospital: HospitalPartner) {
+  const earthRadiusKm = 6371;
+  const dLat = ((hospital.lat - from.lat) * Math.PI) / 180;
+  const dLng = ((hospital.lng - from.lng) * Math.PI) / 180;
+  const lat1 = (from.lat * Math.PI) / 180;
+  const lat2 = (hospital.lat * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.sin(dLng / 2) * Math.sin(dLng / 2) * Math.cos(lat1) * Math.cos(lat2);
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function reportText(
+  profile: UserProfile,
+  result: FusionResult,
+  snapshot: SensorSnapshot,
+  hospital: HospitalWithDistance,
+  location?: UserLocation,
+) {
+  return [
+    `Patient: ${profile.name}`,
+    `Status: ${result.title}`,
+    `Confidence: ${result.confidence}%`,
+    `Action: ${result.action}`,
+    `Heart rate: ${snapshot.heartRate} bpm`,
+    `SpO2: ${snapshot.spo2}%`,
+    `Breath rate: ${snapshot.breathRate} rpm`,
+    `Stress index: ${snapshot.stressIndex}%`,
+    `Hospital: ${hospital.name}`,
+    location
+      ? `Location: ${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`
+      : "Location: not shared",
+  ].join("\n");
+}
+
+function phoneHref(phone: string) {
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
 function SensorCard({
@@ -367,8 +623,8 @@ function DeviceDiagram() {
     >
       <defs>
         <linearGradient id="flowLine" x1="0" x2="1" y1="0" y2="0">
-          <stop offset="0" stopColor="#1f9d8a" />
-          <stop offset="1" stopColor="#2f6fed" />
+          <stop offset="0" stopColor="#17a78b" />
+          <stop offset="1" stopColor="#356fe8" />
         </linearGradient>
       </defs>
       <rect x="58" y="35" width="304" height="180" rx="24" fill="#f8fafc" />
@@ -376,23 +632,23 @@ function DeviceDiagram() {
         d="M78 124 C126 84, 174 84, 220 124 S312 164, 356 124"
         fill="none"
         stroke="url(#flowLine)"
-        strokeWidth="12"
         strokeLinecap="round"
+        strokeWidth="12"
       />
       <path
         d="M93 124 L142 101 L142 147 Z M327 124 L278 101 L278 147 Z"
         fill="#dff7f1"
-        stroke="#1f9d8a"
+        stroke="#17a78b"
         strokeWidth="4"
       />
-      <rect x="172" y="82" width="76" height="84" rx="10" fill="#111827" />
+      <rect x="172" y="82" width="76" height="84" rx="10" fill="#101a27" />
       <rect x="185" y="96" width="50" height="12" rx="4" fill="#55d4c4" />
-      <rect x="185" y="118" width="50" height="12" rx="4" fill="#f7b955" />
-      <rect x="185" y="140" width="50" height="12" rx="4" fill="#ff6b6b" />
-      <circle cx="93" cy="58" r="24" fill="#fff" stroke="#1f9d8a" strokeWidth="5" />
-      <circle cx="327" cy="58" r="24" fill="#fff" stroke="#2f6fed" strokeWidth="5" />
-      <circle cx="93" cy="192" r="24" fill="#fff" stroke="#ff6b6b" strokeWidth="5" />
-      <circle cx="327" cy="192" r="24" fill="#fff" stroke="#f7b955" strokeWidth="5" />
+      <rect x="185" y="118" width="50" height="12" rx="4" fill="#f6b94e" />
+      <rect x="185" y="140" width="50" height="12" rx="4" fill="#ef5d5d" />
+      <circle cx="93" cy="58" r="24" fill="#fff" stroke="#17a78b" strokeWidth="5" />
+      <circle cx="327" cy="58" r="24" fill="#fff" stroke="#356fe8" strokeWidth="5" />
+      <circle cx="93" cy="192" r="24" fill="#fff" stroke="#ef5d5d" strokeWidth="5" />
+      <circle cx="327" cy="192" r="24" fill="#fff" stroke="#f6b94e" strokeWidth="5" />
       <text x="210" y="62" textAnchor="middle" className={styles.svgLabel}>
         ESP32-S3
       </text>
@@ -428,8 +684,8 @@ function LoginScreen({
           <p className={styles.kicker}>Personal health access</p>
           <h1>BreatheFlow</h1>
           <p>
-            Sign in with your profile to view private readings and receive alerts
-            when the fused sensor data detects stress risk.
+            Sensor fusion dashboard for private readings, AI guidance, alerts, and
+            emergency hospital handoff.
           </p>
           <DeviceDiagram />
         </div>
@@ -513,12 +769,12 @@ function LoginScreen({
 
           <button className={styles.loginButton} type="submit">
             <LogIn size={18} aria-hidden="true" />
-            View my readings
+            View dashboard
           </button>
 
           <p className={styles.loginNote}>
-            This prototype stores the login profile on this browser. Real multi-user
-            passwords can be added later with Supabase or Firebase.
+            Demo access is local to this browser. Production login can be connected to
+            Supabase or Firebase later.
           </p>
         </form>
       </section>
@@ -560,9 +816,33 @@ function AlertPanel({
   );
 }
 
+function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className={styles.sectionHeader}>
+      <div>
+        <p className={styles.eyebrow}>{eyebrow}</p>
+        <h2>{title}</h2>
+        <p>{description}</p>
+      </div>
+      {action ? <div className={styles.sectionAction}>{action}</div> : null}
+    </div>
+  );
+}
+
 export default function Home() {
   const [scenario, setScenario] = useState<ScenarioId>("balanced");
   const [live, setLive] = useState(true);
+  const [activeSection, setActiveSection] = useState<AppSection>("dashboard");
   const stepRef = useRef(0);
   const alertKeyRef = useRef("");
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -573,16 +853,56 @@ export default function Home() {
     message: "Alerts are waiting for a health risk signal.",
     channels: [],
   });
+  const [locationState, setLocationState] = useState<LocationState>({
+    status: "idle",
+    message: "Location has not been shared yet.",
+  });
+  const [emergencyState, setEmergencyState] = useState<EmergencyState>({
+    status: "idle",
+    message: "Emergency handoff is ready when needed.",
+    selectedHospitalId: hospitalPartners[0].id,
+  });
   const [snapshot, setSnapshot] = useState<SensorSnapshot>(() =>
     makeSnapshot("balanced", 0),
   );
-  const [history, setHistory] = useState<SensorSnapshot[]>(() =>
+  const [historySnapshots, setHistorySnapshots] = useState<SensorSnapshot[]>(() =>
     Array.from({ length: 24 }, (_, index) => makeSnapshot("balanced", index)),
   );
 
   const result = useMemo(() => classifyStress(snapshot), [snapshot]);
   const selectedScenario =
     scenarios.find((item) => item.id === scenario) ?? scenarios[0];
+  const guidance = useMemo(() => getAiGuidance(result, snapshot), [result, snapshot]);
+  const isSevere = guidance.level === "severe";
+
+  const hospitalsWithDistance = useMemo<HospitalWithDistance[]>(() => {
+    if (!locationState.coords) return hospitalPartners;
+    return hospitalPartners
+      .map((hospital) => ({
+        ...hospital,
+        distanceKm: distanceKm(locationState.coords as UserLocation, hospital),
+      }))
+      .sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999));
+  }, [locationState.coords]);
+
+  const selectedHospital =
+    hospitalsWithDistance.find((item) => item.id === emergencyState.selectedHospitalId) ??
+    hospitalsWithDistance[0];
+
+  const activityLog = useMemo(
+    () =>
+      historySnapshots.slice(-7).map((item, index) => {
+        const itemResult = classifyStress(item);
+        const minutesAgo = (6 - index) * 2;
+        return {
+          id: `${itemResult.cause}-${index}-${item.heartRate}`,
+          time: minutesAgo === 0 ? "Now" : `${minutesAgo} min ago`,
+          result: itemResult,
+          snapshot: item,
+        };
+      }),
+    [historySnapshots],
+  );
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -617,7 +937,7 @@ export default function Home() {
       stepRef.current += 1;
       const nextSnapshot = makeSnapshot(scenario, stepRef.current);
       setSnapshot(nextSnapshot);
-      setHistory((items) => [...items.slice(-23), nextSnapshot]);
+      setHistorySnapshots((items) => [...items.slice(-23), nextSnapshot]);
     }, 1200);
 
     return () => window.clearInterval(interval);
@@ -678,14 +998,53 @@ export default function Home() {
     alertKeyRef.current = alertKey;
 
     void sendHealthAlert(false);
-  }, [profile, result.cause, result.confidence, sendHealthAlert, snapshot]);
+  }, [profile, result.cause, result.confidence, sendHealthAlert]);
+
+  const requestLocation = useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      setLocationState({
+        status: "error",
+        message: "Location is not available on this device.",
+      });
+      return;
+    }
+
+    setLocationState({
+      status: "locating",
+      message: "Requesting location permission...",
+    });
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocationState({
+          status: "ready",
+          message: "Location linked to emergency handoff.",
+          coords: {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+            accuracy: position.coords.accuracy,
+          },
+        });
+      },
+      (error) => {
+        setLocationState({
+          status: error.code === error.PERMISSION_DENIED ? "denied" : "error",
+          message:
+            error.code === error.PERMISSION_DENIED
+              ? "Location permission was denied."
+              : "Location could not be detected.",
+        });
+      },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 },
+    );
+  }, []);
 
   const selectScenario = (nextScenario: ScenarioId) => {
     stepRef.current = 0;
     const first = makeSnapshot(nextScenario, 0);
     setScenario(nextScenario);
     setSnapshot(first);
-    setHistory(
+    setHistorySnapshots(
       Array.from({ length: 24 }, (_, index) => makeSnapshot(nextScenario, index)),
     );
   };
@@ -694,7 +1053,7 @@ export default function Home() {
     setLive(false);
     setSnapshot((current) => {
       const next = { ...current, [key]: value };
-      setHistory((items) => [...items.slice(-23), next]);
+      setHistorySnapshots((items) => [...items.slice(-23), next]);
       return next;
     });
   };
@@ -703,7 +1062,9 @@ export default function Home() {
     const first = makeSnapshot(scenario, 0);
     stepRef.current = 0;
     setSnapshot(first);
-    setHistory(Array.from({ length: 24 }, (_, index) => makeSnapshot(scenario, index)));
+    setHistorySnapshots(
+      Array.from({ length: 24 }, (_, index) => makeSnapshot(scenario, index)),
+    );
   };
 
   const submitLogin = (event: FormEvent<HTMLFormElement>) => {
@@ -737,6 +1098,28 @@ export default function Home() {
     });
   };
 
+  const saveProfile = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextProfile: UserProfile = {
+      name: loginForm.name.trim(),
+      email: loginForm.email.trim(),
+      phone: loginForm.phone.trim(),
+      emailAlerts: loginForm.emailAlerts,
+      smsAlerts: loginForm.smsAlerts,
+    };
+    window.localStorage.setItem("breatheflow-profile", JSON.stringify(nextProfile));
+    setProfile(nextProfile);
+    setAlertState({
+      status: "ready",
+      message: `Alert monitoring is active for ${nextProfile.name}.`,
+      channels: [
+        nextProfile.emailAlerts ? "email" : "",
+        nextProfile.smsAlerts ? "sms" : "",
+      ].filter(Boolean),
+      timestamp: new Date().toLocaleString(),
+    });
+  };
+
   const signOut = () => {
     window.localStorage.removeItem("breatheflow-profile");
     setProfile(null);
@@ -746,6 +1129,76 @@ export default function Home() {
       message: "Alerts are waiting for a health risk signal.",
       channels: [],
     });
+    setActiveSection("dashboard");
+  };
+
+  const sendEmergencyReportAndCall = async () => {
+    if (!profile || !selectedHospital) return;
+
+    const reportId = `BF-${Date.now().toString(36).toUpperCase()}`;
+    setEmergencyState((current) => ({
+      ...current,
+      status: "sending",
+      reportId,
+      message: "Sending health report to affiliated hospital...",
+    }));
+
+    try {
+      const response = await fetch("/api/emergency-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId,
+          profile,
+          result,
+          snapshot,
+          hospital: selectedHospital,
+          location: locationState.coords,
+          generatedAt: new Date().toISOString(),
+        }),
+      });
+      const payload = (await response.json()) as {
+        ok: boolean;
+        mode: "sent" | "demo" | "error";
+        message: string;
+      };
+
+      if (!payload.ok) {
+        setEmergencyState((current) => ({
+          ...current,
+          status: "error",
+          reportId,
+          message: payload.message,
+          timestamp: new Date().toLocaleString(),
+        }));
+        return;
+      }
+
+      setEmergencyState((current) => ({
+        ...current,
+        status: payload.mode === "sent" ? "sent" : "demo",
+        reportId,
+        message: `${payload.message} Opening hospital call option...`,
+        timestamp: new Date().toLocaleString(),
+      }));
+
+      window.setTimeout(() => {
+        setEmergencyState((current) => ({
+          ...current,
+          status: "calling",
+          message: `Calling ${selectedHospital.name}.`,
+        }));
+        window.location.href = phoneHref(selectedHospital.phone);
+      }, 650);
+    } catch {
+      setEmergencyState((current) => ({
+        ...current,
+        status: "error",
+        reportId,
+        message: "Emergency report service could not be reached.",
+        timestamp: new Date().toLocaleString(),
+      }));
+    }
   };
 
   if (!profileLoaded) {
@@ -766,67 +1219,43 @@ export default function Home() {
     );
   }
 
-  return (
-    <main className={styles.page}>
-      <section className={styles.heroBand}>
-        <div className={styles.heroContent}>
-          <div className={styles.heroCopy}>
-            <p className={styles.kicker}>Compact multi-parameter health monitor</p>
-            <h1>BreatheFlow</h1>
-            <p>
-              Respiratory, cardiovascular, and posture signals are fused into one
-              stress-cause dashboard for a wearable health-monitoring prototype.
-            </p>
-            <div className={styles.heroActions}>
-              <button
-                className={`${styles.controlButton} ${live ? styles.activeControl : ""}`}
-                type="button"
-                onClick={() => setLive((value) => !value)}
-                aria-pressed={live}
-                title={live ? "Pause live simulation" : "Resume live simulation"}
-              >
-                {live ? <Pause size={17} /> : <Play size={17} />}
-                <span>{live ? "Live" : "Paused"}</span>
-              </button>
-              <button
-                className={styles.controlButton}
-                type="button"
-                onClick={resetScenario}
-                title="Reset selected scenario"
-              >
-                <RotateCcw size={17} />
-                <span>Reset</span>
-              </button>
-            </div>
+  const dashboardSection = (
+    <>
+      <SectionHeader
+        eyebrow="Live patient dashboard"
+        title="Private readings stay focused until a sidebar section is opened."
+        description="The default view shows only the active health status, signal trace, AI summary, alerts, and emergency readiness."
+        action={
+          <div className={styles.headerActions}>
+            <button
+              className={`${styles.iconButton} ${live ? styles.activeControl : ""}`}
+              type="button"
+              onClick={() => setLive((value) => !value)}
+              title={live ? "Pause live simulation" : "Resume live simulation"}
+              aria-pressed={live}
+            >
+              {live ? <Pause size={17} /> : <Play size={17} />}
+              <span>{live ? "Live" : "Paused"}</span>
+            </button>
+            <button
+              className={styles.iconButton}
+              type="button"
+              onClick={resetScenario}
+              title="Reset selected scenario"
+            >
+              <RotateCcw size={17} />
+              <span>Reset</span>
+            </button>
           </div>
-          <DeviceDiagram />
-        </div>
-      </section>
+        }
+      />
 
-      <section className={styles.profileBand}>
-        <div className={styles.profileCard}>
-          <span className={styles.profileIcon}>
-            <UserRound size={18} aria-hidden="true" />
-          </span>
-          <div>
-            <p>Logged in as</p>
-            <strong>{profile.name}</strong>
-            <span>{profile.email}</span>
-          </div>
-          <button type="button" onClick={signOut} title="Sign out">
-            <LogOut size={16} aria-hidden="true" />
-            <span>Sign out</span>
-          </button>
-        </div>
-        <AlertPanel alertState={alertState} onSendTest={() => void sendHealthAlert(true)} />
-      </section>
-
-      <section className={styles.dashboard}>
-        <div className={styles.statusPanel}>
+      <section className={styles.overviewGrid}>
+        <article className={`${styles.statusPanel} ${styles[`${guidance.level}Risk`]}`}>
           <div className={styles.panelHeader}>
             <div>
               <p className={styles.eyebrow}>Sensor fusion result</p>
-              <h2>{result.title}</h2>
+              <h3>{result.title}</h3>
             </div>
             <span className={`${styles.statusPill} ${styles[result.cause]}`}>
               {result.confidence}% confidence
@@ -842,39 +1271,91 @@ export default function Home() {
               value={result.scores.environment}
               tone="environmentBar"
             />
-            <FusionScore
-              label="Cardio"
-              value={result.scores.cardio}
-              tone="cardioBar"
-            />
-            <FusionScore
-              label="Fatigue"
-              value={result.scores.fatigue}
-              tone="fatigueBar"
-            />
+            <FusionScore label="Cardio" value={result.scores.cardio} tone="cardioBar" />
+            <FusionScore label="Fatigue" value={result.scores.fatigue} tone="fatigueBar" />
           </div>
-        </div>
+        </article>
 
-        <div className={styles.wavePanel}>
+        <article className={styles.wavePanel}>
           <div className={styles.panelHeader}>
             <div>
               <p className={styles.eyebrow}>Live signal trace</p>
-              <h2>{selectedScenario.label}</h2>
+              <h3>{selectedScenario.label}</h3>
             </div>
             <Activity size={22} aria-hidden="true" />
           </div>
-          <svg className={styles.waveChart} viewBox="0 0 220 48" aria-label="Live sensor chart">
-            <path d={chartPath(history, "breathRate")} className={styles.breathLine} />
-            <path d={chartPath(history, "heartRate")} className={styles.heartLine} />
-            <path d={chartPath(history, "spo2")} className={styles.oxygenLine} />
+          <svg className={styles.waveChart} viewBox="0 0 300 58" aria-label="Live sensor chart">
+            <path d={chartPath(historySnapshots, "breathRate")} className={styles.breathLine} />
+            <path d={chartPath(historySnapshots, "heartRate")} className={styles.heartLine} />
+            <path d={chartPath(historySnapshots, "spo2")} className={styles.oxygenLine} />
           </svg>
           <div className={styles.legend}>
             <span><i className={styles.breathDot} /> Breath</span>
             <span><i className={styles.heartDot} /> Heart</span>
             <span><i className={styles.oxygenDot} /> SpO2</span>
           </div>
+        </article>
+
+        <article className={styles.aiPreview}>
+          <div className={styles.previewIcon}>
+            <Bot size={20} aria-hidden="true" />
+          </div>
+          <div>
+            <p className={styles.eyebrow}>AI guidance</p>
+            <h3>{guidance.title}</h3>
+            <p>{guidance.summary}</p>
+          </div>
+          <button type="button" onClick={() => setActiveSection("ai")}>
+            Open AI Suggestions
+          </button>
+        </article>
+
+        <article className={`${styles.emergencyPreview} ${isSevere ? styles.severePanel : ""}`}>
+          <div className={styles.previewIcon}>
+            <Siren size={20} aria-hidden="true" />
+          </div>
+          <div>
+            <p className={styles.eyebrow}>Emergency assist</p>
+            <h3>{isSevere ? "Hospital handoff recommended" : "Hospital handoff ready"}</h3>
+            <p>{selectedHospital.name}</p>
+          </div>
+          <button type="button" onClick={() => setActiveSection("emergency")}>
+            Emergency Assist
+          </button>
+        </article>
+      </section>
+
+      <section className={styles.alertAndVitals}>
+        <AlertPanel alertState={alertState} onSendTest={() => void sendHealthAlert(true)} />
+        <div className={styles.vitalsStrip}>
+          {(["heartRate", "spo2", "breathRate", "stressIndex"] as MetricKey[]).map((key) => {
+            const range = metricRanges[key];
+            return (
+              <div key={key}>
+                <span>
+                  {key === "spo2"
+                    ? "SpO2"
+                    : key.replace(/([A-Z])/g, " $1").toLowerCase()}
+                </span>
+                <strong>
+                  {snapshot[key]}
+                  <small>{range.unit}</small>
+                </strong>
+              </div>
+            );
+          })}
         </div>
       </section>
+    </>
+  );
+
+  const readingsSection = (
+    <>
+      <SectionHeader
+        eyebrow="Readings lab"
+        title="Sensor streams and demo controls"
+        description="Micro Venturi, MAX30102, and MPU6050 values can be reviewed or adjusted for prototype demonstration."
+      />
 
       <section className={styles.sensorGrid} aria-label="Current sensor readings">
         {sensorCards.map((card) => (
@@ -886,7 +1367,7 @@ export default function Home() {
         <div className={styles.scenarioPanel}>
           <div>
             <p className={styles.eyebrow}>Demo scenarios</p>
-            <h2>Root-cause modes</h2>
+            <h3>Root-cause modes</h3>
           </div>
           <div className={styles.segmentedControl} role="group" aria-label="Scenario">
             {scenarios.map((item) => {
@@ -919,7 +1400,7 @@ export default function Home() {
         <div className={styles.labPanel}>
           <div>
             <p className={styles.eyebrow}>Manual lab</p>
-            <h2>Adjust readings</h2>
+            <h3>Adjust readings</h3>
           </div>
           <div className={styles.sliderGrid}>
             {(
@@ -956,6 +1437,448 @@ export default function Home() {
           </div>
         </div>
       </section>
+    </>
+  );
+
+  const aiSection = (
+    <>
+      <SectionHeader
+        eyebrow="AI suggestion box"
+        title="Context-aware guidance appears when readings become abnormal."
+        description="The prototype turns fused signals into explainable next steps and escalation rules."
+        action={
+          result.cause !== "stable" ? (
+            <button
+              className={styles.dangerButton}
+              type="button"
+              onClick={() => setActiveSection("emergency")}
+            >
+              <Siren size={17} aria-hidden="true" />
+              Emergency Assist
+            </button>
+          ) : null
+        }
+      />
+
+      <section className={styles.aiGrid}>
+        <article className={`${styles.aiMainCard} ${styles[`${guidance.level}Risk`]}`}>
+          <div className={styles.aiHeader}>
+            <span className={styles.aiOrb}>
+              <BrainCircuit size={26} aria-hidden="true" />
+            </span>
+            <div>
+              <p className={styles.eyebrow}>AI assessment</p>
+              <h3>{guidance.title}</h3>
+            </div>
+          </div>
+          <p className={styles.aiSummary}>{guidance.summary}</p>
+          <div className={styles.causeBox}>
+            <strong>{guidance.possibleCause}</strong>
+            <span>{guidance.hospitalTrigger}</span>
+          </div>
+        </article>
+
+        <article className={styles.stepsCard}>
+          <p className={styles.eyebrow}>Suggested next steps</p>
+          <div className={styles.stepList}>
+            {guidance.immediateSteps.map((step, index) => (
+              <div key={step}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <p>{step}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+    </>
+  );
+
+  const emergencySection = (
+    <>
+      <SectionHeader
+        eyebrow="Emergency hospital handoff"
+        title="Location, report, and hospital call stay in one controlled flow."
+        description="The user can share location, send the current health report, and open the affiliated hospital call option."
+      />
+
+      <section className={styles.emergencyGrid}>
+        <article className={styles.emergencyCard}>
+          <div className={styles.emergencyTitle}>
+            <span className={`${styles.emergencyIcon} ${isSevere ? styles.pulseIcon : ""}`}>
+              <Ambulance size={24} aria-hidden="true" />
+            </span>
+            <div>
+              <p className={styles.eyebrow}>Health state</p>
+              <h3>{result.title}</h3>
+            </div>
+          </div>
+          <p className={styles.emergencyMessage}>{guidance.hospitalTrigger}</p>
+          <div className={styles.emergencyStats}>
+            <div>
+              <span>HR</span>
+              <strong>{snapshot.heartRate} bpm</strong>
+            </div>
+            <div>
+              <span>SpO2</span>
+              <strong>{snapshot.spo2}%</strong>
+            </div>
+            <div>
+              <span>Stress</span>
+              <strong>{snapshot.stressIndex}%</strong>
+            </div>
+          </div>
+          <button
+            className={styles.dangerButton}
+            type="button"
+            onClick={() => void sendEmergencyReportAndCall()}
+          >
+            <PhoneCall size={18} aria-hidden="true" />
+            Send Report & Call Hospital
+          </button>
+          <p className={styles.smallNote}>
+            Prototype uses one user action before sharing report or opening the call.
+          </p>
+        </article>
+
+        <article className={styles.locationCard}>
+          <div className={styles.panelHeader}>
+            <div>
+              <p className={styles.eyebrow}>Location tracking</p>
+              <h3>{locationState.status === "ready" ? "Location active" : "Location permission"}</h3>
+            </div>
+            <MapPin size={22} aria-hidden="true" />
+          </div>
+          <p>{locationState.message}</p>
+          {locationState.coords ? (
+            <div className={styles.locationMeta}>
+              <span>{locationState.coords.lat.toFixed(5)}</span>
+              <span>{locationState.coords.lng.toFixed(5)}</span>
+              <span>{Math.round(locationState.coords.accuracy ?? 0)} m accuracy</span>
+            </div>
+          ) : null}
+          <button className={styles.secondaryButton} type="button" onClick={requestLocation}>
+            <Navigation size={17} aria-hidden="true" />
+            Detect Location
+          </button>
+        </article>
+
+        <article className={styles.hospitalFocus}>
+          <div className={styles.panelHeader}>
+            <div>
+              <p className={styles.eyebrow}>Nearest affiliated hospital</p>
+              <h3>{selectedHospital.name}</h3>
+            </div>
+            <Hospital size={22} aria-hidden="true" />
+          </div>
+          <p>{selectedHospital.type}</p>
+          <div className={styles.hospitalFacts}>
+            <span>{selectedHospital.response}</span>
+            <span>
+              {selectedHospital.distanceKm
+                ? `${selectedHospital.distanceKm.toFixed(1)} km away`
+                : "Distance after location"}
+            </span>
+          </div>
+          <div className={styles.specialtyTags}>
+            {selectedHospital.specialties.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
+          <a className={styles.secondaryButton} href={phoneHref(selectedHospital.phone)}>
+            <PhoneCall size={17} aria-hidden="true" />
+            Call Only
+          </a>
+        </article>
+
+        <article className={styles.reportCard}>
+          <div className={styles.panelHeader}>
+            <div>
+              <p className={styles.eyebrow}>Report preview</p>
+              <h3>{emergencyState.reportId ?? "Ready to generate"}</h3>
+            </div>
+            <FileText size={22} aria-hidden="true" />
+          </div>
+          <pre>{reportText(profile, result, snapshot, selectedHospital, locationState.coords)}</pre>
+          <div className={`${styles.reportStatus} ${styles[emergencyState.status]}`}>
+            {emergencyState.message}
+            {emergencyState.timestamp ? <span>{emergencyState.timestamp}</span> : null}
+          </div>
+        </article>
+      </section>
+    </>
+  );
+
+  const hospitalsSection = (
+    <>
+      <SectionHeader
+        eyebrow="Affiliated hospital network"
+        title="The app can choose the closest configured hospital after location access."
+        description="For submission, these are prototype partners. Real deployment would replace them with verified hospital contacts."
+        action={
+          <button className={styles.secondaryButton} type="button" onClick={requestLocation}>
+            <MapPin size={17} aria-hidden="true" />
+            Update Location
+          </button>
+        }
+      />
+
+      <section className={styles.hospitalGrid}>
+        {hospitalsWithDistance.map((hospital) => (
+          <article
+            className={`${styles.hospitalCard} ${
+              hospital.id === selectedHospital.id ? styles.selectedHospital : ""
+            }`}
+            key={hospital.id}
+          >
+            <div className={styles.panelHeader}>
+              <div>
+                <p className={styles.eyebrow}>{hospital.type}</p>
+                <h3>{hospital.name}</h3>
+              </div>
+              <Hospital size={22} aria-hidden="true" />
+            </div>
+            <p>{hospital.address}</p>
+            <div className={styles.hospitalFacts}>
+              <span>{hospital.response}</span>
+              <span>
+                {hospital.distanceKm
+                  ? `${hospital.distanceKm.toFixed(1)} km`
+                  : "location pending"}
+              </span>
+            </div>
+            <div className={styles.specialtyTags}>
+              {hospital.specialties.map((item) => (
+                <span key={item}>{item}</span>
+              ))}
+            </div>
+            <div className={styles.cardActions}>
+              <button
+                className={styles.secondaryButton}
+                type="button"
+                onClick={() =>
+                  setEmergencyState((current) => ({
+                    ...current,
+                    selectedHospitalId: hospital.id,
+                    message: `${hospital.name} selected for emergency handoff.`,
+                  }))
+                }
+              >
+                Select
+              </button>
+              <a className={styles.iconLink} href={phoneHref(hospital.phone)}>
+                <PhoneCall size={16} aria-hidden="true" />
+                Call
+              </a>
+            </div>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const historySection = (
+    <>
+      <SectionHeader
+        eyebrow="Health timeline"
+        title="Recent fused states are kept visible for presentation."
+        description="This timeline helps explain how the prototype moves from raw readings to cause-based health events."
+      />
+
+      <section className={styles.timeline}>
+        {activityLog.map((event) => (
+          <article key={event.id} className={styles.timelineItem}>
+            <span className={`${styles.timelineDot} ${styles[event.result.cause]}`} />
+            <div>
+              <p>{event.time}</p>
+              <h3>{event.result.title}</h3>
+              <span>
+                HR {event.snapshot.heartRate} bpm, SpO2 {event.snapshot.spo2}%, stress{" "}
+                {event.snapshot.stressIndex}%
+              </span>
+            </div>
+            <strong>{event.result.confidence}%</strong>
+          </article>
+        ))}
+      </section>
+    </>
+  );
+
+  const profileSection = (
+    <>
+      <SectionHeader
+        eyebrow="Patient profile"
+        title="Profile details open only from the sidebar."
+        description="Contact information controls email and SMS notification routing for the prototype."
+      />
+
+      <form className={styles.profileForm} onSubmit={saveProfile}>
+        <label className={styles.fieldLabel}>
+          Full name
+          <input
+            required
+            type="text"
+            value={loginForm.name}
+            onChange={(event) => setLoginForm({ ...loginForm, name: event.target.value })}
+          />
+        </label>
+        <label className={styles.fieldLabel}>
+          Email address
+          <input
+            required
+            type="email"
+            value={loginForm.email}
+            onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
+          />
+        </label>
+        <label className={styles.fieldLabel}>
+          Phone number
+          <input
+            type="tel"
+            value={loginForm.phone}
+            onChange={(event) => setLoginForm({ ...loginForm, phone: event.target.value })}
+          />
+        </label>
+        <div className={styles.toggleGrid}>
+          <label>
+            <input
+              type="checkbox"
+              checked={loginForm.emailAlerts}
+              onChange={(event) =>
+                setLoginForm({ ...loginForm, emailAlerts: event.target.checked })
+              }
+            />
+            <Mail size={16} aria-hidden="true" />
+            Email alerts
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={loginForm.smsAlerts}
+              onChange={(event) =>
+                setLoginForm({ ...loginForm, smsAlerts: event.target.checked })
+              }
+            />
+            <Phone size={16} aria-hidden="true" />
+            SMS alerts
+          </label>
+        </div>
+        <button className={styles.loginButton} type="submit">
+          Save profile
+        </button>
+      </form>
+    </>
+  );
+
+  const settingsSection = (
+    <>
+      <SectionHeader
+        eyebrow="Prototype settings"
+        title="Submission-ready controls and safety notes"
+        description="The app keeps demo data separate from production alert integrations."
+      />
+
+      <section className={styles.settingsGrid}>
+        <article className={styles.settingCard}>
+          <SlidersHorizontal size={22} aria-hidden="true" />
+          <div>
+            <h3>Simulation mode</h3>
+            <p>Live readings are generated from scenario profiles until ESP32-S3 data is connected.</p>
+          </div>
+        </article>
+        <article className={styles.settingCard}>
+          <ClipboardList size={22} aria-hidden="true" />
+          <div>
+            <h3>Clinical boundary</h3>
+            <p>BreatheFlow is a prototype dashboard, not a certified diagnosis system.</p>
+          </div>
+        </article>
+        <article className={styles.settingCard}>
+          <ShieldCheck size={22} aria-hidden="true" />
+          <div>
+            <h3>Privacy boundary</h3>
+            <p>Profile data stays in browser storage unless an alert or emergency report is sent.</p>
+          </div>
+        </article>
+      </section>
+    </>
+  );
+
+  const sectionContent: Record<AppSection, React.ReactNode> = {
+    dashboard: dashboardSection,
+    readings: readingsSection,
+    ai: aiSection,
+    emergency: emergencySection,
+    hospitals: hospitalsSection,
+    history: historySection,
+    profile: profileSection,
+    settings: settingsSection,
+  };
+
+  return (
+    <main className={styles.page}>
+      <div className={styles.appShell}>
+        <aside className={styles.sidebar}>
+          <div className={styles.brandBlock}>
+            <span className={styles.brandMark}>BF</span>
+            <div>
+              <strong>BreatheFlow</strong>
+              <span>Health Command</span>
+            </div>
+          </div>
+
+          <nav className={styles.sideNav} aria-label="BreatheFlow sections">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  className={`${styles.navButton} ${
+                    activeSection === item.id ? styles.activeNav : ""
+                  }`}
+                  type="button"
+                  onClick={() => setActiveSection(item.id)}
+                >
+                  <Icon size={18} aria-hidden="true" />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          <div className={styles.sidebarProfile}>
+            <span>{getInitials(profile.name)}</span>
+            <div>
+              <strong>{profile.name}</strong>
+              <small>{profile.email}</small>
+            </div>
+          </div>
+        </aside>
+
+        <section className={styles.mainShell}>
+          <header className={styles.topBar}>
+            <div>
+              <p className={styles.eyebrow}>Logged in health workspace</p>
+              <h1>{navItems.find((item) => item.id === activeSection)?.label}</h1>
+            </div>
+            <div className={styles.topActions}>
+              <button
+                className={`${styles.iconButton} ${isSevere ? styles.emergencyHot : ""}`}
+                type="button"
+                onClick={() => setActiveSection("emergency")}
+              >
+                <Siren size={17} aria-hidden="true" />
+                <span>{isSevere ? "Severe Risk" : "Emergency"}</span>
+              </button>
+              <button className={styles.iconButton} type="button" onClick={signOut}>
+                <LogOut size={17} aria-hidden="true" />
+                <span>Sign out</span>
+              </button>
+            </div>
+          </header>
+
+          <div className={styles.contentArea}>{sectionContent[activeSection]}</div>
+        </section>
+      </div>
     </main>
   );
 }
